@@ -14,10 +14,10 @@ NAME:
    cwgo client - generate RPC or HTTP client
 
                  Examples:
-                   # Generate RPC client code 
+                   # Generate RPC client code
                    cwgo client --type RPC --idl  {{path/to/IDL_file.thrift}} --service {{svc_name}}
-                   
-                   # Generate HTTP client code 
+
+                   # Generate HTTP client code
                    cwgo client --type HTTP --idl  {{path/to/IDL_file.thrift}} --service {{svc_name}}
 
 
@@ -25,7 +25,8 @@ USAGE:
    cwgo client [command options] [arguments...]
 
 OPTIONS:
-   --service value                                                              Specify the service name.
+   --service value                                                              Specify the server name.(Not recommended)
+   --server_name value                                                          Specify the server name.
    --type value                                                                 Specify the generate type. (RPC or HTTP) (default: "RPC")
    --module value, --mod value                                                  Specify the Go module name to generate go.mod.
    --idl value                                                                  Specify the IDL file path. (.thrift or .proto)
@@ -38,9 +39,13 @@ OPTIONS:
    --help, -h                                                                   show help (default: false)
 ```
 
+## Attention
+- service is not recommended and will be removed from v0.2.0
+
 ## Specification
 
-- service: Specify the service name for functions such as service registration and discovery
+- service: Specify the service name for functions such as service registration and discovery(Not recommended)
+- server_name: Specify the service name for functions such as service registration and discovery
 - type: Specify the generation type, support parameters RPC and HTTP, default to RPC
 - module/mod: Specify the go mod name, which must be specified outside of GOPATH. In GOPATH, the default name is the path relative to GOPATH
 - idl: Specify the main IDL file path
