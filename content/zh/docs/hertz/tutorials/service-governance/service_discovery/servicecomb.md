@@ -418,8 +418,8 @@ func main() {
         }),
     )
 
-    h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
-        ctx.JSON(consts.StatusOK, utils.H{"ping": "pong1"})
+    h.GET("/ping", func(ctx context.Context, c *app.RequestContext) {
+        c.JSON(consts.StatusOK, utils.H{"ping": "pong1"})
     })
     h.Spin()
 }

@@ -85,9 +85,9 @@ func run() {
 	h := server.New(server.WithALPN(true), server.WithTLS(testdata.GetTLSConfig()), server.WithTransport(quic.NewTransporter), server.WithAltTransport(netpoll.NewTransporter), server.WithHostPorts("127.0.0.1:8080"))
 	h.AddProtocol(suite.HTTP3, factory.NewServerFactory(&http3.Option{}))
 
-	h.GET("/demo/tile", func(c context.Context, ctx *app.RequestContext) {
+	h.GET("/demo/tile", func(ctx context.Context, c *app.RequestContext) {
 		// Small 40x40 png
-		ctx.Write([]byte{
+		c.Write([]byte{
 			0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
 			0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x28, 0x00, 0x00, 0x00, 0x28,
 			0x01, 0x03, 0x00, 0x00, 0x00, 0xb6, 0x30, 0x2a, 0x2e, 0x00, 0x00, 0x00,
@@ -98,12 +98,12 @@ func run() {
 		})
 	})
 
-	h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
-		ctx.JSON(consts.StatusOK, utils.H{"ping": "pong"})
+	h.GET("/ping", func(ctx context.Context, c *app.RequestContext) {
+		c.JSON(consts.StatusOK, utils.H{"ping": "pong"})
 	})
 
-	h.GET("/struct", func(c context.Context, ctx *app.RequestContext) {
-		ctx.JSON(consts.StatusOK, &Test{
+	h.GET("/struct", func(ctx context.Context, c *app.RequestContext) {
+		c.JSON(consts.StatusOK, &Test{
 			A: "aaa",
 			B: "bbb",
 		})
@@ -111,8 +111,8 @@ func run() {
 
 	v1 := h.Group("/v1")
 	{
-		v1.GET("/hello/:name", func(c context.Context, ctx *app.RequestContext) {
-			fmt.Fprintf(ctx, "Hi %s, this is the response from Hertz.\n", ctx.Param("name"))
+		v1.GET("/hello/:name", func(ctx context.Context, c *app.RequestContext) {
+			fmt.Fprintf(ctx, "Hi %s, this is the response from Hertz.\n", c.Param("name"))
 		})
 	}
 

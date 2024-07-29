@@ -34,8 +34,8 @@ func main() {
 
     pprof.Register(h)
 
-    h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
-    ctx.JSON(consts.StatusOK, utils.H{"ping": "pong"})
+    h.GET("/ping", func(ctx context.Context, c *app.RequestContext) {
+    c.JSON(consts.StatusOK, utils.H{"ping": "pong"})
     })
 
     h.Spin()
@@ -75,8 +75,8 @@ func main() {
 	// default is "debug/pprof"
 	pprof.Register(h, "dev/pprof")
 
-	h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
-		ctx.JSON(consts.StatusOK, utils.H{"ping": "pong"})
+	h.GET("/ping", func(ctx context.Context, c *app.RequestContext) {
+		c.JSON(consts.StatusOK, utils.H{"ping": "pong"})
 	})
 
 	h.Spin()
@@ -120,8 +120,8 @@ func main() {
 
 	adminGroup := h.Group("/admin")
 
-	adminGroup.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
-		ctx.JSON(consts.StatusOK, utils.H{"ping": "pong"})
+	adminGroup.GET("/ping", func(ctx context.Context, c *app.RequestContext) {
+		c.JSON(consts.StatusOK, utils.H{"ping": "pong"})
 	})
 
 	pprof.RouteRegister(adminGroup, "pprof")

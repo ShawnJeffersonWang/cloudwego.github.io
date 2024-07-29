@@ -298,10 +298,10 @@ Two methods are provided:
    func main() {
        h := server.Default(server.WithHostPorts("127.0.0.1:8080"), server.WithStreamBody(true), server.WithTransport(standard.NewTransporter))
 
-       h.GET("/streamWrite1", func(c context.Context, ctx *app.RequestContext) {
+       h.GET("/streamWrite1", func(ctx context.Context, c *app.RequestContext) {
            rw := newChunkReader()
            line := []byte("line\r\n")
-           ctx.SetBodyStream(rw, 500*len(line))
+           c.SetBodyStream(rw, 500*len(line))
 
            go func() {
                for i := 1; i <= 500; i++ {
@@ -319,11 +319,11 @@ Two methods are provided:
            }()
        })
 
-       h.GET("/streamWrite2", func(c context.Context, ctx *app.RequestContext) {
+       h.GET("/streamWrite2", func(ctx context.Context, c *app.RequestContext) {
            rw := newChunkReader()
            // Content-Length may be negative:
            // -1 means Transfer-Encoding: chunked.
-           ctx.SetBodyStream(rw, -1)
+           c.SetBodyStream(rw, -1)
 
            go func() {
                for i := 1; i < 1000; i++ {
@@ -400,13 +400,13 @@ Two methods are provided:
    Example Code:
 
    ```go
-   h.GET("/flush/chunk", func(c context.Context, ctx *app.RequestContext) {
+   h.GET("/flush/chunk", func(ctx context.Context, c *app.RequestContext) {
    	// Hijack the writer of response
-   	ctx.Response.HijackWriter(resp.NewChunkedBodyWriter(&ctx.Response, ctx.GetWriter()))
+   	c.Response.HijackWriter(resp.NewChunkedBodyWriter(&c.Response, c.GetWriter()))
 
    	for i := 0; i < 10; i++ {
-   		ctx.Write([]byte(fmt.Sprintf("chunk %d: %s", i, strings.Repeat("hi~", i)))) // nolint: errcheck
-   		ctx.Flush()                                                                 // nolint: errcheck
+   		c.Write([]byte(fmt.Sprintf("chunk %d: %s", i, strings.Repeat("hi~", i)))) // nolint: errcheck
+   		c.Flush()                                                                 // nolint: errcheck
    		time.Sleep(200 * time.Millisecond)
    	}
    })
@@ -462,12 +462,12 @@ Example Code:
 func main() {
     h := server.New()
     // When in Panic, the function in PanicHandler will be triggered, returning a 500 status code and carrying error information
-    h.PanicHandler = func(c context.Context, ctx *app.RequestContext) {
-        ctx.JSON(500, utils.H{
+    h.PanicHandler = func(ctx context.Context, c *app.RequestContext) {
+        c.JSON(500, utils.H{
             "message": "panic",
         })
     }
-    h.GET("/hello", func(c context.Context, ctx *app.RequestContext) {
+    h.GET("/hello", func(ctx context.Context, c *app.RequestContext) {
         panic("panic")
     })
     h.Spin()
@@ -515,13 +515,13 @@ Example Code:
 
 ```go
 func getHandler() app.HandlerFunc {
-	return func(c context.Context, ctx *app.RequestContext) {
+	return func(ctx context.Context, c *app.RequestContext) {
 		ctx.String(consts.StatusOK, "get handler")
 	}
 }
 
 func postHandler() app.HandlerFunc {
-	return func(c context.Context, ctx *app.RequestContext) {
+	return func(ctx context.Context, c *app.RequestContext) {
 		ctx.String(consts.StatusOK, "post handler")
 	}
 }

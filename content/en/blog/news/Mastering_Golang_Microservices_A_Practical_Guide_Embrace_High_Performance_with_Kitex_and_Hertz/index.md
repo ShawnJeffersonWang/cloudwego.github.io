@@ -129,8 +129,8 @@ import (
 func main() {
     h := server.Default()
 
-    h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
-        ctx.JSON(consts.StatusOK, app.H{"message": "pong"})
+    h.GET("/ping", func(ctx context.Context, c *app.RequestContext) {
+        c.JSON(consts.StatusOK, app.H{"message": "pong"})
     })
 
     h.Spin()
@@ -288,7 +288,7 @@ For more details and solutions on these and other error codes, please refer to t
 Hertz also provides a standard `context.Content` and a request context as input arguments in the function in the `HandleFunc` Design. The handler/middleware function signature is:
 
 ```go
-type HandlerFunc func(c context.Context, ctx *app.RequestContext)
+type HandlerFunc func(ctx context.Context, c *app.RequestContext)
 ```
 
 #### Metadata Storage

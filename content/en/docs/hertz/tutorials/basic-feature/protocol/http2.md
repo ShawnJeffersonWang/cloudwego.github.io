@@ -92,9 +92,9 @@ func main() {
 		config.WithDisableKeepAlive(false)))
 	cfg.NextProtos = append(cfg.NextProtos, "h2")
 
-	h.POST("/", func(c context.Context, ctx *app.RequestContext) {
+	h.POST("/", func(ctx context.Context, c *app.RequestContext) {
 		var j map[string]string
-		_ = json.Unmarshal(ctx.Request.Body(), &j)
+		_ = json.Unmarshal(c.Request.Body(), &j)
 		fmt.Printf("[server]: received request: %+v\n", j)
 
 		r := map[string]string{
@@ -103,7 +103,7 @@ func main() {
 		for k, v := range j {
 			r[k] = v
 		}
-		ctx.JSON(http.StatusOK, r)
+		c.JSON(http.StatusOK, r)
 	})
 
 	go runClient()
@@ -162,9 +162,9 @@ func main() {
 	// register HTTP2 server factory
 	h.AddProtocol("h2", factory.NewServerFactory())
 
-	h.POST("/", func(c context.Context, ctx *app.RequestContext) {
+	h.POST("/", func(ctx context.Context, c *app.RequestContext) {
 		var j map[string]string
-		_ = json.Unmarshal(ctx.Request.Body(), &j)
+		_ = json.Unmarshal(c.Request.Body(), &j)
 		fmt.Printf("server received request: %+v\n", j)
 		r := map[string]string{
 			"msg": "hello world",
@@ -172,7 +172,7 @@ func main() {
 		for k, v := range j {
 			r[k] = v
 		}
-		ctx.JSON(http.StatusOK, r)
+		c.JSON(http.StatusOK, r)
 	})
 
 	go runClient()
@@ -269,9 +269,9 @@ func main() {
 		config.WithDisableKeepAlive(false)))
 	cfg.NextProtos = append(cfg.NextProtos, "h2")
 
-	h.POST("/", func(c context.Context, ctx *app.RequestContext) {
+	h.POST("/", func(ctx context.Context, c *app.RequestContext) {
 		var j map[string]string
-		_ = json.Unmarshal(ctx.Request.Body(), &j)
+		_ = json.Unmarshal(c.Request.Body(), &j)
 		fmt.Printf("[server]: received request: %+v\n", j)
 
 		r := map[string]string{
@@ -280,7 +280,7 @@ func main() {
 		for k, v := range j {
 			r[k] = v
 		}
-		ctx.JSON(http.StatusOK, r)
+		c.JSON(http.StatusOK, r)
 	})
 
 	go runClient()
@@ -426,9 +426,9 @@ func main() {
 		config.WithDisableKeepAlive(false)))
 	cfg.NextProtos = append(cfg.NextProtos, "h2")
 
-	h.POST("/", func(c context.Context, ctx *app.RequestContext) {
+	h.POST("/", func(ctx context.Context, c *app.RequestContext) {
 		var j map[string]string
-		_ = json.Unmarshal(ctx.Request.Body(), &j)
+		_ = json.Unmarshal(c.Request.Body(), &j)
 		fmt.Printf("[server]: received request: %+v\n", j)
 
 		r := map[string]string{
@@ -437,7 +437,7 @@ func main() {
 		for k, v := range j {
 			r[k] = v
 		}
-		ctx.JSON(http.StatusOK, r)
+		c.JSON(http.StatusOK, r)
 	})
 
 	go runClient()

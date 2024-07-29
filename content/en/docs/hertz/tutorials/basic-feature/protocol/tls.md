@@ -252,8 +252,8 @@ func main() {
 	)
 
 	// Ping handler
-	h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
-		ctx.JSON(200, map[string]interface{}{
+	h.GET("/ping", func(ctx context.Context, c *app.RequestContext) {
+		c.JSON(200, map[string]interface{}{
 			"ping": "pong",
 		})
 	})
@@ -303,8 +303,8 @@ func main() {
 	)
 
 	// Ping handler
-	h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
-		ctx.JSON(200, map[string]interface{}{
+	h.GET("/ping", func(ctx context.Context, c *app.RequestContext) {
+		c.JSON(200, map[string]interface{}{
 			"ping": "pong",
 		})
 	})
@@ -347,8 +347,8 @@ func main() {
 	h := autotls.NewServerWithManagerAndTlsConfig(&m, nil)
 
 	// Ping handler
-	h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
-		ctx.JSON(200, map[string]interface{}{
+	h.GET("/ping", func(ctx context.Context, c *app.RequestContext) {
+		c.JSON(200, map[string]interface{}{
 			"ping": "pong",
 		})
 	})
