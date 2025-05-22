@@ -1,6 +1,6 @@
 ---
 Description: ""
-date: "2025-01-20"
+date: "2025-03-18"
 lastmod: ""
 tags: []
 title: Callback - Langfuse
@@ -18,20 +18,19 @@ import (
 )
 
 func main() {
-    cbh, flusher := NewLangfuseHandler(&_Config_{
+    cbh, flusher := langfuse.NewLangfuseHandler(&langfuse.Config{
         Host: "https://cloud.langfuse.com",
         PublicKey: "pk-xxx",
         SecretKey: "sk-xxx",
     })
-    
-    **callbacks**.InitCallbackHandlers([]**callbacks**._Handler_{cbh}) // 设置langfuse为全局callback
+    defer flusher() // 等待所有trace上报完成后退出
+
+    callbacks.AppendGlobalHandlers(cbh) // 设置langfuse为全局callback
     
     g := NewGraph[string,string]()
     /*
     * compose and run graph
     */
-    
-    flusher() // 等待所有trace上报完成后退出
 }
 ```
 

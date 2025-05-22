@@ -9,18 +9,18 @@ description: "Kitex 进阶教程"
 
 开始此章节前，确保你已经了解**前置知识**并完成了**环境准备**。
 
-本文中，我们将会模拟一个简单的电商场景，包括商品服务、库存服务与 API 服务，商品服用调用库存服务查询库存，API 服务调用商品服务查询商品信息，对前端或用户暴露 HTTP 接口供查询商品信息。
+本文中，我们将会模拟一个简单的电商场景，包括商品服务、库存服务与 API 服务，商品服务调用库存服务查询库存，API 服务调用商品服务查询商品信息，对前端或用户暴露 HTTP 接口供查询商品信息。
 
 > [完整代码](https://github.com/cloudwego/kitex-examples/tree/main/basic/example_shop)
 
 ## 创建项目目录
 
-创建一个目录用于存放后续代码，创建后进入该目录
+创建一个目录用于存放后续代码，进入该目录后初始化 Go module：
 
 ```shell
 mkdir example_shop
-
 cd example_shop
+go mod init example_shop
 ```
 
 ## 编写 IDL
@@ -143,42 +143,42 @@ kitex 默认会将代码生成到执行命令的目录下，kitex 的命令中�
 ├── go.mod // go module 文件
 ├── go.sum
 ├── idl   // 示例 idl 存放的目录
-│   ├── base.thrift
-│   ├── item.thrift
-│   └── stock.thrift
+│   ├── base.thrift
+│   ├── item.thrift
+│   └── stock.thrift
 ├── kitex_gen
-│   └── example
-│       └── shop
-│           ├── base
-│           │   ├── base.go // 根据 IDL 生成的编解码文件，由 IDL 编译器生成
-│           │   ├── k-base.go // kitex 专用的一些拓展内容
-│           │   └── k-consts.go
-│           ├── item
-│           │   ├── item.go // 根据 IDL 生成的编解码文件，由 IDL 编译器生成
-│           │   ├── itemservice // kitex 封装代码主要在这里
-│           │   │   ├── client.go
-│           │   │   ├── invoker.go
-│           │   │   ├── itemservice.go
-│           │   │   └── server.go
-│           │   ├── k-consts.go
-│           │   └── k-item.go // kitex 专用的一些拓展内容
-│           └── stock
-│               ├── k-consts.go
-│               ├── k-stock.go // kitex 专用的一些拓展内容
-│               ├── stock.go // 根据 IDL 生成的编解码文件，由 IDL 编译器生成
-│               └── stockservice // kitex 封装代码主要在这里
-│                   ├── client.go
-│                   ├── invoker.go
-│                   ├── server.go
-│                   └── stockservice.go
+│   └── example
+│       └── shop
+│           ├── base
+│           │   ├── base.go // 根据 IDL 生成的编解码文件，由 IDL 编译器生成
+│           │   ├── k-base.go // kitex 专用的一些拓展内容
+│           │   └── k-consts.go
+│           ├── item
+│           │   ├── item.go // 根据 IDL 生成的编解码文件，由 IDL 编译器生成
+│           │   ├── itemservice // kitex 封装代码主要在这里
+│           │   │   ├── client.go
+│           │   │   ├── invoker.go
+│           │   │   ├── itemservice.go
+│           │   │   └── server.go
+│           │   ├── k-consts.go
+│           │   └── k-item.go // kitex 专用的一些拓展内容
+│           └── stock
+│               ├── k-consts.go
+│               ├── k-stock.go // kitex 专用的一些拓展内容
+│               ├── stock.go // 根据 IDL 生成的编解码文件，由 IDL 编译器生成
+│               └── stockservice // kitex 封装代码主要在这里
+│                   ├── client.go
+│                   ├── invoker.go
+│                   ├── server.go
+│                   └── stockservice.go
 └── rpc
     ├── item
-    │   ├── build.sh   // 用来编译的脚本，一般情况下不需要更改
-    │   ├── handler.go // 服务端的业务逻辑都放在这里，这也是我们需要更改和编写的文件
-    │   ├── kitex_info.yaml
-    │   ├── main.go
-    │   └── script
-    │       └── bootstrap.sh
+    │   ├── build.sh   // 用来编译的脚本，一般情况下不需要更改
+    │   ├── handler.go // 服务端的业务逻辑都放在这里，这也是我们需要更改和编写的文件
+    │   ├── kitex_info.yaml
+    │   ├── main.go
+    │   └── script
+    │       └── bootstrap.sh
     └── stock
         ├── build.sh   // 用来编译项目的脚本，一般情况下不需要更改
         ├── handler.go // 服务端的业务逻辑都放在这里，这也是我们需要更改和编写的文件
@@ -200,14 +200,20 @@ github.com/apache/thrift/lib/go/thrift: ambiguous import: found package github.c
 github.com/cloudwego/kitex@v0.X.X/pkg/utils/thrift.go: not enough arguments in call to t.tProt.WriteMessageBegin
 ```
 
-先执行一遍下述命令，再继续操作：
+请先执行下述两条命令：
 
-```
+```shell
 go mod edit -droprequire=github.com/apache/thrift/lib/go/thrift
 go mod edit -replace=github.com/apache/thrift=github.com/apache/thrift@v0.13.0
 ```
 
 这是因为 thrift 官方在 0.14 版本对 thrift 接口做了 breaking change，导致生成代码不兼容。
+
+然后**务必再执行一次** `go mod tidy` 拉取依赖：
+
+```shell
+go mod tidy
+```
 
 若想要升级 kitex 版本，执行 `go get -v github.com/cloudwego/kitex@latest` 即可：
 
@@ -315,7 +321,7 @@ fi
 ```
 output
 ├── bin // 存放二进制可执行文件
-│   └── example.shop.item
+│   └── example.shop.item
 └── bootstrap.sh // 运行文件的脚本
 ```
 
@@ -448,7 +454,7 @@ func Handler(ctx context.Context, c *app.RequestContext) {
 
 ### 测试接口
 
-打开游览器访问 `localhost:8889/api/item`，看到如下信息，代表请求成功。
+打开浏览器访问 `localhost:8889/api/item`，看到如下信息，代表请求成功。
 
 ```
 GetItemResp({Item:Item({Id:1024 Title:Kitex Description:Kitex is an excellent framework! Stock:0}) BaseResp:BaseResp({Code: Msg:})})
@@ -592,7 +598,14 @@ func main() {
 
 由于库存服务跑在 8890 端口，所以我们指定 8890 端口创建客户端。
 
-至此，商品服务代码编写完整，参照上文重新编译启动商品服务，看到如下输出代表运行成功：
+至此，商品服务代码编写完整，参照上文重新编译并启动商品服务，具体命令如下：
+
+```bash
+sh build.sh
+sh output/bootstrap.sh
+```
+
+看到如下输出代表运行成功：
 
 ```
 2024/01/21 00:18:29.522546 server.go:83: [Info] KITEX: server listen at addr=[::]:8888
@@ -600,7 +613,7 @@ func main() {
 
 ## 测试接口
 
-打开游览器访问 `localhost:8889/api/item`，看到如下信息，代表请求成功。
+打开浏览器访问 `localhost:8889/api/item`，看到如下信息，代表请求成功。
 
 ```
 GetItemResp({Item:Item({Id:1024 Title:Kitex Description:Kitex is an excellent framework! Stock:1024}) BaseResp:BaseResp({Code: Msg:})})
@@ -859,7 +872,7 @@ func main() {
 
 #### 测试
 
-为商品服务添加代码后需要重新启动，然后再启动 API 服务，打开游览器访问 `localhost:8889/api/item`，看到如下信息，代表请求成功。
+为商品服务添加代码后需要重新启动，然后再启动 API 服务，打开浏览器访问 `localhost:8889/api/item`，看到如下信息，代表请求成功。
 
 ```
 GetItemResp({Item:Item({Id:1024 Title:Kitex Description:Kitex is an excellent framework! Stock:1024}) BaseResp:BaseResp({Code: Msg:})})

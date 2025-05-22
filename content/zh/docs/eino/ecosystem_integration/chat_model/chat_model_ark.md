@@ -1,6 +1,6 @@
 ---
 Description: ""
-date: "2025-01-07"
+date: "2025-03-19"
 lastmod: ""
 tags: []
 title: ChatModel - ARK
@@ -18,6 +18,8 @@ Ark 是 ChatModel 接口的一个实现，用于与火山引擎 Ark Runtime 服�
 Ark 模型通过 `NewChatModel` 函数进行初始化，主要配置参数如下：
 
 ```go
+import "github.com/cloudwego/eino-ext/components/model/ark"
+
 model, err := ark.NewChatModel(ctx, &ark.ChatModelConfig{
     // 服务配置
     BaseURL:    "https://ark.cn-beijing.volces.com/api/v3", // 服务地址
@@ -41,15 +43,10 @@ model, err := ark.NewChatModel(ctx, &ark.ChatModelConfig{
     Stop:             []string{},  // 停止词
     FrequencyPenalty: &fp,        // 频率惩罚
     PresencePenalty:  &pp,        // 存在惩罚
-    RepetitionPenalty: &rp,       // 重复惩罚
-    N:                &n,         // 生成数量
     
     // 高级参数
-    ResponseFormat:    &format,    // 响应格式
     LogitBias:        map[string]int{}, // Token 偏置
-    LogProbs:         &logProbs,  // 是否返回概率
-    TopLogProbs:      &topLp,     // Top K 概率数量
-    User:             &user,      // 用户标识
+    CustomHeader:     map[string]string{}, // http custom header
 })
 ```
 
@@ -76,9 +73,6 @@ func main() {
     messages := []*schema.Message{
         // 系统消息
         schema.SystemMessage("你是一个助手"),
-        
-        // 文本消息
-        schema.UserMessage("你好"),
         
         // 多模态消息（包含图片）
         {
@@ -137,45 +131,46 @@ package main
 import (
     "context"
     "time"
-    
+
     "github.com/cloudwego/eino-ext/components/model/ark"
     "github.com/cloudwego/eino/schema"
 )
 
 func main() {
     ctx := context.Background()
-    
+
+    timeout := 30 * time.Second
     // 初始化模型
     model, err := ark.NewChatModel(ctx, &ark.ChatModelConfig{
-        APIKey:  "your-api-key",
-        Region:  "cn-beijing",
-        Model:   "endpoint-id",
-        Timeout: ptrOf(30 * time.Second),
+       APIKey:  "your-api-key",
+       Region:  "cn-beijing",
+       Model:   "endpoint-id",
+       Timeout: &timeout,
     })
     if err != nil {
-        panic(err)
+       panic(err)
     }
-    
+
     // 准备消息
     messages := []*schema.Message{
-        schema.SystemMessage("你是一个助手"),
-        schema.UserMessage("介绍一下火山引擎"),
+       schema.SystemMessage("你是一个助手"),
+       schema.UserMessage("介绍一下火山引擎"),
     }
-    
+
     // 生成回复
     response, err := model.Generate(ctx, messages)
     if err != nil {
-        panic(err)
+       panic(err)
     }
-    
+
     // 处理回复
     println(response.Content)
-    
+
     // 获取 Token 使用情况
     if usage := response.ResponseMeta.Usage; usage != nil {
-        println("提示 Tokens:", usage.PromptTokens)
-        println("生成 Tokens:", usage.CompletionTokens)
-        println("总 Tokens:", usage.TotalTokens)
+       println("提示 Tokens:", usage.PromptTokens)
+       println("生成 Tokens:", usage.CompletionTokens)
+       println("总 Tokens:", usage.TotalTokens)
     }
 }
 ```

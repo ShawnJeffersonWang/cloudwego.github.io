@@ -1,6 +1,6 @@
 ---
 Description: ""
-date: "2025-01-20"
+date: "2025-03-19"
 lastmod: ""
 tags: []
 title: Tool - DuckDuckGoSearch
@@ -49,39 +49,67 @@ package main
 
 import (
     "context"
-    
+    "encoding/json"
+    "fmt"
+    "log"
+    "time"
+
     "github.com/cloudwego/eino-ext/components/tool/duckduckgo"
     "github.com/cloudwego/eino-ext/components/tool/duckduckgo/ddgsearch"
 )
 
 func main() {
     ctx := context.Background()
-    
-    // 初始化搜索工具
-    searchTool, err := duckduckgo.NewTool(ctx, &duckduckgo.Config{
-        Region:     ddgsearch.RegionWT,
-        MaxResults: 10,
-        SafeSearch: ddgsearch.SafeSearchOff,
-        TimeRange:  ddgsearch.TimeRangeAll,
-    })
-    if err != nil {
-        panic(err)
+
+    // Create configuration
+    config := &duckduckgo.Config{
+        MaxResults: 3, // Limit to return 3 results
+        Region:     ddgsearch.RegionCN,
+        DDGConfig: &ddgsearch.Config{
+            Timeout:    10 * time.Second,
+            Cache:      true,
+            MaxRetries: 5,
+        },
     }
-    
-    // 准备搜索请求
-    request := &SearchRequest{
-        Query: "Golang concurrent programming",
+
+    // Create search client
+    tool, err := duckduckgo.NewTool(ctx, config)
+    if err != nil {
+        log.Fatalf("NewTool of duckduckgo failed, err=%v", err)
+    }
+
+    // Create search request
+    searchReq := &duckduckgo.SearchRequest{
+        Query: "Golang programming development",
         Page:  1,
     }
-    
-    // 执行搜索
-    result, err := searchTool.Search(ctx, request)
+
+    jsonReq, err := json.Marshal(searchReq)
     if err != nil {
-        panic(err)
+        log.Fatalf("Marshal of search request failed, err=%v", err)
     }
-    
-    // 处理搜索结果
-    println(result) // JSON 格式的搜索结果
+
+    // Execute search
+    resp, err := tool.InvokableRun(ctx, string(jsonReq))
+    if err != nil {
+        log.Fatalf("Search of duckduckgo failed, err=%v", err)
+    }
+
+    var searchResp duckduckgo.SearchResponse
+    if err := json.Unmarshal([]byte(resp), &searchResp); err != nil {
+        log.Fatalf("Unmarshal of search response failed, err=%v", err)
+    }
+
+    // Print results
+    fmt.Println("Search Results:")
+    fmt.Println("==============")
+    for i, result := range searchResp.Results {
+        fmt.Printf("\n%d. Title: %s\n", i+1, result.Title)
+        fmt.Printf("   Link: %s\n", result.Link)
+        fmt.Printf("   Description: %s\n", result.Description)
+    }
+    fmt.Println("")
+    fmt.Println("==============")
 }
 ```
 

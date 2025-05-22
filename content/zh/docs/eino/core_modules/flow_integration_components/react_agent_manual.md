@@ -1,6 +1,6 @@
 ---
 Description: ""
-date: "2025-02-10"
+date: "2025-03-20"
 lastmod: ""
 tags: []
 title: 'Eino: React Agent 使用手册'
@@ -13,8 +13,6 @@ Eino React Agent 是实现了 [React 逻辑](https://react-lm.github.io/) 的智
 
 > 💡
 > 代码实现详见：[实现代码目录](https://github.com/cloudwego/eino/tree/main/flow/agent/react)
-
-Example 代码路径：[https://github.com/cloudwego/eino-examples/blob/main/flow/agent/react/react.go](https://github.com/cloudwego/eino-examples/blob/main/flow/agent/react/react.go)
 
 ## 节点拓扑&数据流图
 
@@ -50,13 +48,15 @@ func main() {
     
     // 初始化所需的 tools
     tools := compose.ToolsNodeConfig{
-        InvokableTools:  []tool.InvokableTool{mytool},
-        StreamableTools: []tool.StreamableTool{myStreamTool},
+        Tools: []tool.BaseTool{
+			mytool,
+            ...
+		},
     }
     
     // 创建 agent
-    agent, err := react.NewAgent(ctx, react.AgentConfig{
-        Model: toolableChatModel,
+    agent, err := react.NewAgent(ctx, &react.AgentConfig{
+        ToolCallingModel: toolableChatModel,
         ToolsConfig: tools,
         ...
     }
@@ -98,8 +98,8 @@ func openaiExample() {
         Model:   "{{model name which support tool call}}",
     })
 
-    agent, err := react.NewAgent(ctx, react.AgentConfig{
-        Model: chatModel,
+    agent, err := react.NewAgent(ctx, &react.AgentConfig{
+        ToolCallingModel: chatModel,
         ToolsConfig: ...,
     })
 }
@@ -108,10 +108,11 @@ func arkExample() {
     arkModel, err := ark.NewChatModel(context.Background(), ark.ChatModelConfig{
         APIKey: os.Getenv("ARK_API_KEY"),
         Model:  os.Getenv("ARK_MODEL"),
+        BaseURL: os.Getenv("ARK_BASE_URL"),
     })
 
-    agent, err := react.NewAgent(ctx, react.AgentConfig{
-        Model: arkModel,
+    agent, err := react.NewAgent(ctx, &react.AgentConfig{
+        ToolCallingModel: arkModel,
         ToolsConfig: ...,
     })
 }
@@ -171,20 +172,23 @@ userInfoTool := utils.NewTool(
     })
     
 toolConfig := &compose.ToolsNodeConfig{
-    InvokableTools:  []tool.InvokableTool{invokeTool},
+    Tools: []tool.BaseTool{
+        mytool,
+        ...
+    },
 }
 ```
 
 ### MessageModifier
 
-MessageModifier 会在每次把所有历史消息传递给 ChatModel 之前执行，其定义为：
+MessageModifier 会在每次把所有历史消息传递给 ChatModel 之前执行，定义为：
 
 ```go
 // modify the input messages before the model is called.
 type MessageModifier func(ctx context.Context, input []*schema.Message) []*schema.Message
 ```
 
-框架提供了一个简便的 PersonaModifier，用于在消息列表的最头部增加一个代表 agent 个性的 system message，使用如下:
+在 Agent 中配置 MessageModifier 可以修改传入模型的 messages：
 
 ```go
 import (
@@ -193,21 +197,24 @@ import (
 )
 
 func main() {
-    persona := `你是一个 golang 开发专家.`
-    
     agent, err := react.NewAgent(ctx, &react.AgentConfig{
-        Model: toolableChatModel,
+        ToolCallingModel: toolableChatModel,
         ToolsConfig: tools,
         
-        // MessageModifier
-        MessageModifier: react.NewPersonaModifier(persona),
+        MessageModifier: func(ctx context.Context, input []*schema.Message) []*schema.Message {
+            res := make([]*schema.Message, 0, len(input)+1)
+    
+            res = append(res, schema.SystemMessage("你是一个 golang 开发专家."))
+            res = append(res, input...)
+            return res
+        },
     })
     
     agent.Generate(ctx, []*schema.Message{schema.UserMessage("写一个 hello world 的代码")})
-    // 实际到 ChatModel 的 input 为
+    // 模型得到的实际输入为：
     // []*schema.Message{
-    //    {Role: schema.System, Content: "你是一个 golang 开发专家."},
-    //    {Role: schema.Human, Content: "写一个 hello world 的代码"}
+    //    {Role: schema.System, Content: "You are an expert golang developer."},
+    //    {Role: schema.Human, Content: "Write a hello world code"}
     //}
 }
 ```
@@ -223,7 +230,7 @@ func main() {
 ```go
 func main() {
     agent, err := react.NewAgent(ctx, &react.AgentConfig{
-        Model: toolableChatModel,
+        ToolCallingModel: toolableChatModel,
         ToolsConfig: tools,
         MaxStep: 20,
     }
@@ -236,7 +243,7 @@ func main() {
 
 ```go
 a, err = NewAgent(ctx, &AgentConfig{
-    Model: cm,
+    ToolCallingModel: cm,
     ToolsConfig: compose.ToolsNodeConfig{
        Tools: []tool.BaseTool{fakeTool, fakeStreamTool},
     },
@@ -250,30 +257,68 @@ a, err = NewAgent(ctx, &AgentConfig{
 
 不同的模型在流式模式下输出工具调用的方式可能不同: 某些模型(如 OpenAI) 会直接输出工具调用；某些模型 (如 Claude) 会先输出文本，然后再输出工具调用。因此需要使用不同的方法来判断，这个字段用来指定判断模型流式输出中是否包含工具调用的函数。
 
-可选填写，未填写时使用首包是否包含工具调用判断。
+可选填写，未填写时使用“非空包”是否包含工具调用判断：
 
 ```go
-agent, err := react.NewAgent(ctx, &react.AgentConfig{
-    Model: toolableChatModel,
-    ToolsConfig: tools,
-    StreamToolCallChecker: func(___ context.Context, _sr_ *schema.StreamReader[*schema.Message]) (bool, error) {
-        defer sr.Close()
+func firstChunkStreamToolCallChecker(_ context.Context, sr *schema.StreamReader[*schema.Message]) (bool, error) {
+    defer sr.Close()
 
-        msg, err := sr.Recv()
-        if err != nil {
-            return false, err
-        }
+    for {
+       msg, err := sr.Recv()
+       if err == io.EOF {
+          return false, nil
+       }
+       if err != nil {
+          return false, err
+       }
 
-        if len(msg.ToolCalls) == 0 {
-            return false, nil
-        }
+       if len(msg.ToolCalls) > 0 {
+          return true, nil
+       }
 
-        return true, nil
+       if len(msg.Content) == 0 { // skip empty chunks at the front
+          continue
+       }
+
+       return false, nil
     }
 }
 ```
 
-部分模型流式输出工具调用时会先输出一段文本（比如 Claude），这会导致默认 StreamToolCallChecker 错误判断没有工具调用而直接返回，使用这类模型时必须自行实现正确的 StreamToolCallChecker。
+上述默认实现适用于：模型输出的 Tool Call Message 中只有 Tool Call。¡
+
+默认实现不适用的情况：在输出 Tool Call 前，有非空的 content chunk。此时，需要自定义 tool Call checker 如下：
+
+```go
+toolCallChecker := func(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (bool, error) {
+    defer sr.Close()
+    for {
+        msg, err := sr.Recv()
+        if err != nil {
+            if errors.Is(err, io.EOF) {
+                // finish
+                break
+            }
+
+            return false, err
+        }
+
+        if len(msg.ToolCalls) > 0 {
+            return true, nil
+        }
+    }
+        
+    return false, nil
+}    
+```
+
+
+上面这个自定义 StreamToolCallChecker，在极端情况下可能需要判断所有包是否包含 ToolCall，从而导致“流式判断”的效果丢失。如果希望尽可能保留“流式判断”效果，解决这一问题的建议是：
+
+> 💡
+> 尝试添加 prompt 来约束模型在工具调用时不额外输出文本，例如：“如果需要调用tool，直接输出tool，不要输出文本”。 
+> 
+> 不同模型受 prompt 影响可能不同，实际使用时需要自行调整prompt并验证效果。
 
 ## 调用
 
@@ -337,7 +382,7 @@ Agent 可作为 Lambda 嵌入到其他的 Graph 中:
 
 ```go
 agent, _ := NewAgent(ctx, &AgentConfig{
-    Model: cm,
+    ToolCallingModel: cm,
     ToolsConfig: compose.ToolsNodeConfig{
        Tools: []tool.BaseTool{fakeTool, &fakeStreamToolGreetForTest{}},
     },
@@ -393,7 +438,7 @@ res, _ := r.Invoke(ctx, []*schema.Message{{Role: schema.User, Content: "hello"}}
 - 进入 `Tools` 节点，调用 查询餐厅 的 tool，并且得到结果，结果返回了 2 家海淀区的餐厅信息:
 
 ```json
-[{"id":"1001","name":"跳不动的E世界5F餐厅","place":"中关村E世界 5F, 左转进入","desc":"","score":3},{"id":"1002","name":"跳动的E世界地下餐厅","place":"中关村E世界-1F","desc":"","score":5}]
+[{"id":"1001","name":"老地方餐厅","place":"北京老胡同 5F, 左转进入","desc":"","score":3},{"id":"1002","name":"人间味道餐厅","place":"北京大世界商城-1F","desc":"","score":5}]
 ```
 
 - 得到 tool 的结果后，此时对话的 history 中包含了 tool 的结果，再次运行 `ChatModel`，大模型判断出需要再次调用另一个 ToolCall，用来查询餐厅有哪些菜品，注意，由于有两家餐厅，因此大模型返回了 2 个 ToolCall，如下：

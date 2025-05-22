@@ -1,6 +1,6 @@
 ---
 Description: ""
-date: "2025-01-20"
+date: "2025-04-21"
 lastmod: ""
 tags: []
 title: 'Eino: ChatTemplate 使用说明'
@@ -18,6 +18,8 @@ Prompt 组件是一个用于处理和格式化提示模板的组件。它的主�
 ## **组件定义**
 
 ### **接口定义**
+
+> 代码位置：eino/components/prompt/interface.go
 
 ```go
 type ChatTemplate interface {
@@ -63,15 +65,35 @@ Prompt 组件使用 Option 来定义可选参数， ChatTemplate 没有公共的
 
 ChatTemplate 一般用于 ChatModel 之前做上下文准备的。
 
+### 创建方法
+
+- `prompt.FromMessages()`
+  - 用于把多个 message 变成一个 chat template。
+- `schema.Message{}`
+  - schema.Message 是实现了 Format 接口的结构体，因此可直接构建 `schema.Message{}` 作为 template
+- `schema.SystemMessage()`
+  - 此方法是构建 role 为 "system" 的 message 快捷方法
+- `schema.AssistantMessage()`
+  - 此方法是构建 role 为 "assistant" 的 message 快捷方法
+- `schema.UserMessage()`
+  - 此方法是构建 role 为 "user" 的 message 快捷方法
+- `schema.ToolMessage()`
+  - 此方法是构建 role 为 "tool" 的 message 快捷方法
+- `schema.MessagesPlaceholder()`
+  - 可用于把一个 `[]*schema.Message` 插入到 message 列表中，常用于插入历史对话
+
 ### **单独使用**
 
 ```go
+import (
+    "github.com/cloudwego/eino/components/prompt"
+    "github.com/cloudwego/eino/schema"
+)
+
 // 创建模板
 template := prompt.FromMessages(schema.FString,
-    &schema.Message{
-        Role:    schema.System,
-        Content: "你是一个{role}。",
-    },
+    schema.SystemMessage("你是一个{role}。"),
+    schema.MessagesPlaceholder("history_key", false),
     &schema.Message{
         Role:    schema.User,
         Content: "请帮我{task}。",
@@ -82,18 +104,22 @@ template := prompt.FromMessages(schema.FString,
 variables := map[string]any{
     "role": "专业的助手",
     "task": "写一首诗",
+    "history_key": []*schema.Message{{Role: schema.User, Content: "告诉我油画是什么?"}, {Role: schema.Assistant, Content: "油画是xxx"}},
 }
 
 // 格式化模板
-messages, err := template.Format(ctx, variables)
-if err != nil {
-    return err
-}
+messages, err := template.Format(context.Background(), variables)
 ```
 
 ### **在编排中使用**
 
 ```go
+import (
+    "github.com/cloudwego/eino/components/prompt"
+    "github.com/cloudwego/eino/schema"
+    "github.com/cloudwego/eino/compose"
+)
+
 // 在 Chain 中使用
 chain := compose.NewChain[map[string]any, []*schema.Message]()
 chain.AppendChatTemplate(template)
@@ -110,13 +136,37 @@ graph := compose.NewGraph[map[string]any, []*schema.Message]()
 graph.AddChatTemplateNode("template_node", template)
 ```
 
+### 从前驱节点的输出中获取数据
+
+在 AddNode 时，可以通过添加 WithOutputKey 这个 Option 来把节点的输出转成 Map：
+
+```go
+// 这个节点的输出，会从 string 改成 map[string]any，
+// 且 map 中只有一个元素，key 是 your_output_key，value 是实际的的节点输出的 string
+graph.AddLambdaNode("your_node_key", compose.InvokableLambda(func(ctx context.Context, input []*schema.Message) (str string, err error) {
+    // your logic
+    return
+}), compose.WithOutputKey("your_output_key"))
+```
+
+把前驱节点的输出转成 map[string]any 并设置好 key 后，在后置的 ChatTemplate 节点中使用该 key 对应的 value。
+
 ## **Option 和 Callback 使用**
 
 ### **Callback 使用示例**
 
 ```go
+import (
+    "context"
+
+    callbackHelper "github.com/cloudwego/eino/utils/callbacks"
+    "github.com/cloudwego/eino/callbacks"
+    "github.com/cloudwego/eino/compose"
+    "github.com/cloudwego/eino/components/prompt"
+)
+
 // 创建 callback handler
-handler := &prompt.CallbackHandler{
+handler := &callbackHelper.PromptCallbackHandler{
     OnStart: func(ctx context.Context, info *callbacks.RunInfo, input *prompt.CallbackInput) context.Context {
         fmt.Printf("开始格式化模板，变量: %v\n", input.Variables)
         return ctx
@@ -128,7 +178,7 @@ handler := &prompt.CallbackHandler{
 }
 
 // 使用 callback handler
-helper := template.NewHandlerHelper().
+helper := callbackHelper.NewHandlerHelper().
     Prompt(handler).
     Handler()
 
@@ -147,6 +197,10 @@ result, err := runnable.Invoke(ctx, variables, compose.WithCallbacks(helper))
 若有需要，组件实现者可实现自定义 prompt option：
 
 ```go
+import (
+    "github.com/cloudwego/eino/components/prompt"
+)
+
 // 定义 Option 结构体
 type MyPromptOptions struct {
     StrictMode bool
@@ -170,6 +224,8 @@ func WithDefaultValues(values map[string]string) prompt.Option {
 ### **Callback 处理**
 
 Prompt 实现需要在适当的时机触发回调，以下结构是组件定义好的：
+
+> 代码位置：eino/components/prompt/callback_extra.go
 
 ```go
 // 定义回调输入输出

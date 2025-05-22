@@ -173,6 +173,8 @@ func main(){
 
 Server
 
+注意事项：通过`NewOpenTelemetryProvider`创建的provider实例会持有trace/metric exporter client，在重复初始化时需要显式调用前一个实例的`Shutdown`方法来关闭其维护的所有exporter client，否则将导致资源泄露和网络连接混乱问题。
+
 ```go
 import (
     ...
@@ -202,3 +204,9 @@ func main()  {
     }
 }
 ```
+
+## 更多
+### 编译时注入
+如果您不想通过sdk的方式接入open-telemetry，您还可以使用open-telemetry官方推荐的编译时注入方案，该方案可以使得用户在不修改源代码的前提下自动接入open-telemetry，相关链接：
+1. [open-telemetry官方项目链接](https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation)
+2. [open-telemetry官方技术博客](https://opentelemetry.io/blog/2025/go-compile-time-instrumentation)
